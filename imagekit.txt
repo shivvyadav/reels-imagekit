@@ -1,0 +1,66 @@
+// process to use imagekit
+
+1.Install the dependencies
+   npm install @imagekit/next
+
+2.configure next.confit.ts
+    images: {
+    domains: ["ik.imagekit.io"],
+    },
+
+3.create the api route 
+   create this --> app/api/upload-auth/route.ts
+
+   import { getUploadAuthParams } from "@imagekit/next/server"
+
+        export async function GET() {
+            // Your application logic to authenticate the user
+            // For example, you can check if the user is logged in or has the necessary permissions
+            // If the user is not authenticated, you can return an error response
+
+            const { token, expire, signature } = getUploadAuthParams({
+            privateKey: process.env.IMAGEKIT_PRIVATE_KEY as string, // Never expose this on client side
+             publicKey: process.env.IMAGEKIT_PUBLIC_KEY as string,
+            // expire: 30 * 60, // Optional, controls the expiry time of the token in seconds, maximum 1 hour in the future
+            // token: "random-token", // Optional, a unique token for request
+         })
+
+         return Response.json({ token, expire, signature, publicKey: process.env.IMAGEKIT_PUBLIC_KEY })
+    }
+
+4.create the global provider component (for all like next auth, clerk, ImageKitProvider)
+   create this --> src/components/Provider.tsx
+
+        import {SessionProvider} from "next-auth/react";
+        import {ImageKitProvider} from "@imagekit/next";
+
+        export function Providers({children}: {children: React.ReactNode}) {
+         return (
+         <SessionProvider>
+              <ImageKitProvider urlEndpoint={process.env.IMAGEKIT_URL_ENDPOINT}>
+                 {children}
+             </ImageKitProvider>
+         </SessionProvider>
+         );
+    }
+
+
+5.wrap the layout.tsx using Provider.tsx
+  
+    export default function RootLayout(
+        {children}: Readonly<{children: React.ReactNode;}>) {
+     return (
+         <html lang='en'>
+             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+                  <Provider>{children}</Provider>
+            </body>
+         </html>
+        );
+    }
+
+6. create FileUpload component 
+
+    --> actually create separate component for file upload logic function
+    --> import that function in required page*    
+    --> call that function which returns the promises onProgress, onSuccess, onError and onCancel
+    --> use those promises to show UI in page*
